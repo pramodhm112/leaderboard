@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>◆ Leaderboard — Real-Time Rankings</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>">
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin
+    src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    html {
+      -webkit-font-smoothing: antialiased
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(160deg, #06060b 0%, #110d1f 40%, #0c111b 100%);
+      color: #cbd5e1;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      line-height: 1.5
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0a0a12
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #6d28d9;
+      border-radius: 4px
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes glow {
+
+      0%,
+      100% {
+        filter: drop-shadow(0 0 6px rgba(139, 92, 246, .25))
+      }
+
+      50% {
+        filter: drop-shadow(0 0 18px rgba(139, 92, 246, .5))
+      }
+    }
+
+    @keyframes barGrow {
+      from {
+        transform: scaleX(0)
+      }
+
+      to {
+        transform: scaleX(1)
+      }
+    }
+
+    @keyframes hlPulse {
+      0% {
+        background: rgba(139, 92, 246, .35)
+      }
+
+      100% {
+        background: transparent
+      }
+    }
+
+    .fade-up {
+      animation: fadeUp .3s ease both
+    }
+
+    .glow-s {
+      animation: glow 4s ease-in-out infinite
+    }
+
+    .bar-a {
+      animation: barGrow .5s cubic-bezier(.4, 0, .2, 1) both
+    }
+
+    .hl-row {
+      animation: hlPulse 2.5s ease both
+    }
+
+    .btn {
+      border: none;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      transition: all .15s
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.12)
+    }
+
+    .btn:active {
+      transform: translateY(0)
+    }
+
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      transform: none;
+      filter: none
+    }
+
+    .hov:hover {
+      background: rgba(139, 92, 246, .05) !important
+    }
+
+    input,
+    select {
+      font-family: 'JetBrains Mono', monospace;
+      transition: border-color .2s
+    }
+
+    input:focus,
+    select:focus {
+      border-color: #8b5cf6 !important;
+      outline: none
+    }
+
+    .header {
+      padding: 18px 24px;
+      border-bottom: 1px solid rgba(139, 92, 246, .1);
+      background: rgba(6, 6, 11, .88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      position: sticky;
+      top: 0;
+      z-index: 50
+    }
+
+    .header-in {
+      max-width: 1040px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px
+    }
+
+    .logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      background: linear-gradient(135deg, #c4b5fd, #8b5cf6, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text
+    }
+
+    .main {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 20px 24px
+    }
+
+    .nav {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 20px;
+      background: rgba(17, 13, 31, .5);
+      border-radius: 8px;
+      padding: 3px;
+      width: fit-content;
+      border: 1px solid rgba(139, 92, 246, .07)
+    }
+
+    .nav .btn.on {
+      background: #7c3aed;
+      color: #fff
+    }
+
+    .nav .btn:not(.on) {
+      background: transparent;
+      color: #64748b
+    }
+
+    .pill.on {
+      background: #7c3aed;
+      color: #fff;
+      border-color: #7c3aed
+    }
+
+    .pill:not(.on) {
+      background: rgba(139, 92, 246, .06);
+      color: #8b5cf6;
+      border-color: rgba(139, 92, 246, .15)
+    }
+
+    .podium {
+      display: grid;
+      grid-template-columns: 1fr 1.12fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+      align-items: end
+    }
+
+    .pod-card {
+      border-radius: 14px;
+      padding: 16px 12px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end
+    }
+
+    .pod-av {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      margin: 0 auto 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      font-weight: 800;
+      color: #0a0a0f
+    }
+
+    .tbl {
+      background: rgba(10, 8, 20, .45);
+      border-radius: 12px;
+      border: 1px solid rgba(139, 92, 246, .08);
+      overflow: hidden
+    }
+
+    .tbl-h {
+      display: grid;
+      grid-template-columns: 48px 1fr 120px 72px 56px;
+      padding: 9px 16px;
+      border-bottom: 1px solid rgba(139, 92, 246, .07);
+      font-size: 8px;
+      letter-spacing: 2.5px;
+      color: #475569
+    }
+
+    .tbl-b {
+      max-height: 500px;
+      overflow-y: auto
+    }
+
+    .tbl-r {
+      display: grid;
+      grid-template-columns: 48px 1fr 120px 72px 56px;
+      padding: 8px 16px;
+      align-items: center;
+      border-bottom: 1px solid rgba(139, 92, 246, .03)
+    }
+
+    .card {
+      background: rgba(10, 8, 20, .45);
+      border-radius: 12px;
+      border: 1px solid rgba(139, 92, 246, .12);
+      padding: 20px
+    }
+
+    .inp {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 7px;
+      border: 1px solid rgba(139, 92, 246, .18);
+      background: rgba(6, 6, 11, .85);
+      color: #e2e8f0;
+      font-size: 12px
+    }
+
+    .chip {
+      padding: 3px 9px;
+      border-radius: 10px;
+      font-size: 9px;
+      background: rgba(139, 92, 246, .07);
+      color: #8b5cf6;
+      border: 1px solid rgba(139, 92, 246, .12)
+    }
+
+    .alert-ok {
+      margin-top: 12px;
+      background: rgba(34, 197, 94, .07);
+      border-radius: 8px;
+      border: 1px solid rgba(34, 197, 94, .18);
+      padding: 12px
+    }
+
+    .alert-err {
+      margin-top: 12px;
+      background: rgba(239, 68, 68, .07);
+      border-radius: 8px;
+      border: 1px solid rgba(239, 68, 68, .18);
+      padding: 12px;
+      font-size: 11px;
+      color: #ef4444
+    }
+
+    .alert-info {
+      margin-top: 12px;
+      padding: 9px 12px;
+      border-radius: 7px;
+      background: rgba(139, 92, 246, .05);
+      border: 1px solid rgba(139, 92, 246, .1);
+      font-size: 10px;
+      color: #7c3aed;
+      display: flex;
+      align-items: center;
+      gap: 7px
+    }
+
+    .dist {
+      margin-top: 16px;
+      background: rgba(10, 8, 20, .35);
+      border-radius: 9px;
+      border: 1px solid rgba(139, 92, 246, .06);
+      padding: 12px 16px
+    }
+
+    .dist-bars {
+      display: flex;
+      gap: 3px;
+      align-items: flex-end;
+      height: 48px
+    }
+
+    .dist-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px
+    }
+
+    .dist-bar {
+      width: 100%;
+      border-radius: 2px 2px 0 0;
+      transform-origin: bottom;
+      background: linear-gradient(180deg, #8b5cf6, #6d28d9)
+    }
+
+    .footer {
+      margin-top: 32px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(139, 92, 246, .05);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 7.5px;
+      color: #334155;
+      letter-spacing: 1.5px
+    }
+
+    @media(max-width:700px) {
+      .podium {
+        grid-template-columns: 1fr
+      }
+
+      .tbl-h,
+      .tbl-r {
+        grid-template-columns: 40px 1fr 80px 56px
+      }
+
+      .tbl-h>:nth-child(5),
+      .tbl-r>:nth-child(5) {
+        display: none
+      }
+
+      .header-in {
+        flex-direction: column;
+        align-items: flex-start
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    // ╔═══════════════════════════════════════════════════════════════════╗
+    // ║  👇 CHANGE THIS TO YOUR API GATEWAY INVOKE URL                   ║
+    // ║  Example: https://us21x8fo3l.execute-api.us-east-1.amazonaws.com/prod  ║
+    // ╚═══════════════════════════════════════════════════════════════════╝
+    const API_BASE = "";
+
+    const { useState, useEffect, useCallback } = React;
+
+    const FL = { US: "🇺🇸", KR: "🇰🇷", JP: "🇯🇵", DE: "🇩🇪", UK: "🇬🇧", BR: "🇧🇷", CA: "🇨🇦", AU: "🇦🇺", IN: "🇮🇳", FR: "🇫🇷", MX: "🇲🇽", SE: "🇸🇪", CN: "🇨🇳", RU: "🇷🇺", IT: "🇮🇹", ES: "🇪🇸", NL: "🇳🇱", PL: "🇵🇱" };
+    const MD = { 1: "👑", 2: "🥈", 3: "🥉" };
+    const GC = { 1: "#FFD700", 2: "#B0BEC5", 3: "#CD7F32" };
+
+    function avBg(id) {
+      if (!id) return "#333";
+      const a = (id.charCodeAt(0) * 41) % 360, b = ((id.charCodeAt(1) || 65) * 61) % 360;
+      return `linear-gradient(135deg,hsl(${a},55%,38%),hsl(${b},45%,28%))`;
+    }
+
+    // ─── API helpers with error handling ───
+    async function api(method, path, body) {
+      const opts = { method, headers: { "Content-Type": "application/json" } };
+      if (body) opts.body = JSON.stringify(body);
+      const r = await fetch(API_BASE + path, opts);
+      const text = await r.text();
+      let data;
+      try { data = JSON.parse(text); } catch { throw new Error(text.slice(0, 200)); }
+      if (!r.ok) throw new Error(data.message || data.error || `HTTP ${r.status}`);
+      return data;
+    }
+
+    function App() {
+      const [players, setPlayers] = useState([]);
+      const [period, setPeriod] = useState("all-time");
+      const [total, setTotal] = useState(0);
+      const [qms, setQms] = useState(0);
+      const [tab, setTab] = useState("board");
+      const [ts, setTs] = useState(null);
+      const [loadErr, setLoadErr] = useState("");
+
+      // Search state
+      const [searchId, setSearchId] = useState("");
+      const [pStats, setPStats] = useState(null);
+      const [searchErr, setSearchErr] = useState("");
+      const [searching, setSearching] = useState(false);
+
+      // Submit state
+      const [form, setForm] = useState({ player_id: "", display_name: "", score: "", country: "US" });
+      const [submitRes, setSubmitRes] = useState(null);
+      const [busy, setBusy] = useState(false);
+
+      // Other
+      const [seeding, setSeeding] = useState(false);
+      const [highlight, setHighlight] = useState(null);
+
+      const demo = API_BASE.includes("YOUR-API");
+
+      // ─── Fetch leaderboard from API ───
+      const fetchBoard = useCallback(async () => {
+        if (demo) return;
+        try {
+          setLoadErr("");
+          const d = await api("GET", `/leaderboard?period=${period}&limit=25`);
+          setPlayers(d.players || []);
+          setTotal(d.total_players || 0);
+          setQms(d.query_time_ms || 0);
+          setTs(new Date());
+        } catch (e) {
+          setLoadErr(e.message);
+        }
+      }, [period, demo]);
+
+      useEffect(() => { fetchBoard(); }, [fetchBoard]);
+      useEffect(() => {
+        if (demo) return;
+        const iv = setInterval(fetchBoard, 15000);
+        return () => clearInterval(iv);
+      }, [fetchBoard, demo]);
+
+      // ─── Search player via /player?player_id=xxx ───
+      const searchPlayer = async () => {
+        const pid = searchId.trim().toLowerCase();
+        if (!pid) { setSearchErr("Please enter a player ID"); return; }
+        setSearching(true); setSearchErr(""); setPStats(null);
+        try {
+          const data = await api("GET", `/player?player_id=${encodeURIComponent(pid)}`);
+          setPStats(data);
+          if (data.found === false) {
+            setSearchErr(`Player "${pid}" not found. Try a name from the leaderboard (e.g. blazemaster).`);
+          }
+        } catch (e) {
+          setSearchErr(`Search failed: ${e.message}`);
+        }
+        setSearching(false);
+      };
+
+      // ─── Submit score via POST /scores ───
+      const submitScore = async () => {
+        const pid = form.player_id.trim().toLowerCase();
+        if (!pid) { setSubmitRes({ error: "Player ID is required" }); return; }
+        if (!form.score || isNaN(form.score)) { setSubmitRes({ error: "Valid score is required" }); return; }
+        setBusy(true); setSubmitRes(null);
+        try {
+          const data = await api("POST", "/scores", {
+            player_id: pid,
+            display_name: form.display_name.trim() || pid,
+            score: parseInt(form.score),
+            country: form.country,
+          });
+          setSubmitRes(data);
+          setHighlight(pid);
+          setTimeout(() => setHighlight(null), 3000);
+          setTimeout(fetchBoard, 1500);
+        } catch (e) {
+          setSubmitRes({ error: e.message });
+        }
+        setBusy(false);
+      };
+
+      // ─── Seed test data via POST /simulate ───
+      const seed = async () => {
+        setSeeding(true); setLoadErr("");
+        try {
+          const data = await api("POST", "/simulate", { players: 20 });
+          setTimeout(fetchBoard, 2500);
+        } catch (e) {
+          setLoadErr(`Seed failed: ${e.message}`);
+        }
+        setTimeout(() => setSeeding(false), 3000);
+      };
+
+      const topScore = players.length ? players[0].score : 1;
+
+      // Score distribution
+      const distL = ["0-1k", "1-2k", "2-3k", "3-4k", "4-5k", "5-6k", "6-7k", "7-8k", "8-9k", "9-10k"];
+      const distB = new Array(10).fill(0);
+      players.forEach(p => distB[Math.min(Math.floor(p.score / 1000), 9)]++);
+      const distMx = Math.max(...distB, 1);
+
+      // ─── DEMO MODE: Show setup instructions ───
+      if (demo) {
+        return (
+          <React.Fragment>
+            <header className="header"><div className="header-in"><div>
+              <h1 className="logo">◆ LEADERBOARD</h1>
+              <p style={{ fontSize: 9, color: "#475569", letterSpacing: 3, marginTop: 2 }}>INVERTED-SCORE GSI • DYNAMODB</p>
+            </div></div></header>
+            <div className="main">
+              <div className="card" style={{ maxWidth: 580, margin: "50px auto", textAlign: "center" }}>
+                <div style={{ fontSize: 48, marginBottom: 14 }}>🔧</div>
+                <h2 style={{ fontFamily: "'Orbitron'", fontSize: 16, color: "#c4b5fd", marginBottom: 14 }}>CONFIGURE API URL</h2>
+                <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 16, lineHeight: 1.8 }}>
+                  Open this HTML file in a text editor and find <code style={{ background: "rgba(0,0,0,.3)", padding: "2px 6px", borderRadius: 3, color: "#a78bfa" }}>API_BASE</code> near the top of the script:
+                </p>
+                <div style={{ background: "rgba(0,0,0,.35)", borderRadius: 8, padding: 14, textAlign: "left", fontSize: 11, color: "#a78bfa", lineHeight: 2, overflowX: "auto", whiteSpace: "pre" }}>
+                  <span style={{ color: "#475569" }}>// Change this line:</span>{"\n"}<span style={{ color: "#ef4444" }}>const</span> API_BASE = <span style={{ color: "#22c55e" }}>"https://YOUR-API-ID.execute-api.REGION.amazonaws.com/prod"</span>;{"\n"}{"\n"}<span style={{ color: "#475569" }}>// To your actual URL, e.g.:</span>{"\n"}<span style={{ color: "#ef4444" }}>const</span> API_BASE = <span style={{ color: "#22c55e" }}>"https://us21x8fo3l.execute-api.us-east-1.amazonaws.com/prod"</span>;
+                </div>
+                <p style={{ fontSize: 11, color: "#64748b", marginTop: 16 }}>Save the file and refresh this page.</p>
+                <div style={{ marginTop: 20, padding: 12, background: "rgba(139,92,246,.05)", borderRadius: 8, border: "1px solid rgba(139,92,246,.1)", textAlign: "left", fontSize: 10, color: "#8b5cf6", lineHeight: 1.8 }}>
+                  <strong>Hosting options:</strong><br />
+                  • <strong>nginx:</strong> cp leaderboard-dashboard.html /var/www/html/index.html<br />
+                  • <strong>S3:</strong> aws s3 cp leaderboard-dashboard.html s3://bucket/index.html<br />
+                  • <strong>Local:</strong> Just open the file in your browser
+                </div>
+              </div>
+            </div>
+          </React.Fragment>
+        );
+      }
+
+      // ─── LIVE MODE: Connected to API ───
+      return (
+        <React.Fragment>
+          {/* HEADER */}
+          <header className="header">
+            <div className="header-in">
+              <div>
+                <h1 className="logo">◆ LEADERBOARD</h1>
+                <p style={{ fontSize: 9, color: "#475569", letterSpacing: 3, marginTop: 2 }}>INVERTED-SCORE GSI • DYNAMODB • SERVERLESS</p>
+              </div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                {ts && <span style={{ fontSize: 9, color: "#475569", textAlign: "right", lineHeight: 1.7 }}>
+                  {total} players • {qms}ms<br />{ts.toLocaleTimeString()}
+                </span>}
+                <button className="btn" onClick={fetchBoard} style={{ padding: "7px 12px", borderRadius: 6, background: "rgba(139,92,246,.1)", color: "#a78bfa", fontSize: 10, letterSpacing: 1 }}>↻</button>
+                <button className="btn" onClick={seed} disabled={seeding}
+                  style={{ padding: "7px 14px", borderRadius: 6, background: seeding ? "#1e1b2e" : "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff", fontSize: 10, letterSpacing: 1.5 }}>
+                  {seeding ? "⏳ SEEDING…" : "⚡ SEED DATA"}
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <div className="main">
+            {loadErr && <div className="alert-err" style={{ marginBottom: 14 }}>⚠ {loadErr}</div>}
+
+            {/* NAV */}
+            <nav className="nav">
+              {[["board", "🏆 Rankings"], ["search", "🔍 Player"], ["submit", "📤 Submit"]].map(([k, l]) => (
+                <button key={k} className={`btn ${tab === k ? "on" : ""}`} onClick={() => setTab(k)}
+                  style={{ padding: "7px 16px", borderRadius: 6, fontSize: 11, letterSpacing: 1 }}>{l}</button>
+              ))}
+            </nav>
+
+            {/* ═══════ RANKINGS TAB ═══════ */}
+            {tab === "board" && (
+              <div>
+                {/* Period pills */}
+                <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
+                  {[["all-time", "ALL TIME"], ["daily", "TODAY"], ["weekly", "THIS WEEK"]].map(([v, l]) => (
+                    <button key={v} className={`btn pill ${period === v ? "on" : ""}`} onClick={() => setPeriod(v)}
+                      style={{ padding: "5px 13px", borderRadius: 20, fontSize: 9, letterSpacing: 2, border: "1px solid" }}>{l}</button>
+                  ))}
+                </div>
+
+                {/* Empty */}
+                {players.length === 0 && !loadErr && (
+                  <div className="card" style={{ textAlign: "center", padding: 40 }}>
+                    <div style={{ fontSize: 40, marginBottom: 10 }}>🏜️</div>
+                    <p style={{ color: "#64748b", fontSize: 13, lineHeight: 1.8 }}>
+                      No players found for this period.<br />
+                      Click <strong style={{ color: "#a78bfa" }}>⚡ SEED DATA</strong> to generate test players.
+                    </p>
+                  </div>
+                )}
+
+                {/* Podium */}
+                {players.length >= 3 && (
+                  <div className="podium">
+                    {[1, 0, 2].map((idx, col) => {
+                      const p = players[idx]; if (!p) return null;
+                      const r = idx + 1; const h = [130, 158, 114][col];
+                      return (
+                        <div key={p.player_id} className="pod-card fade-up glow-s"
+                          style={{ animationDelay: `${col * .07}s`, background: `linear-gradient(180deg,${GC[r]}10 0%,rgba(10,8,20,.95) 100%)`, border: `1px solid ${GC[r]}30`, minHeight: h }}>
+                          <div style={{ fontSize: 24, marginBottom: 2 }}>{MD[r]}</div>
+                          <div className="pod-av" style={{ background: `linear-gradient(135deg,${GC[r]},${GC[r]}88)`, border: `2px solid ${GC[r]}60` }}>{(p.display_name || "?")[0]}</div>
+                          <div style={{ fontFamily: "'Orbitron'", fontWeight: 700, fontSize: 12, color: GC[r] }}>{p.display_name}</div>
+                          <div style={{ fontFamily: "'Orbitron'", fontWeight: 900, fontSize: 19, color: "#fff", marginTop: 2 }}>{Number(p.score).toLocaleString()}</div>
+                          <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>{FL[p.country] || "🌍"} {p.country} • {p.games_played}g</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Table */}
+                {players.length > 0 && (
+                  <div className="tbl">
+                    <div className="tbl-h"><div>#</div><div>PLAYER</div><div>SCORE</div><div>CTRY</div><div>GP</div></div>
+                    <div className="tbl-b">
+                      {players.map((p, i) => (
+                        <div key={p.player_id + "-" + i} className={`tbl-r hov fade-up ${highlight === p.player_id ? "hl-row" : ""}`}
+                          style={{ animationDelay: `${i * .02}s`, background: i < 3 ? `${GC[i + 1]}05` : "transparent" }}>
+                          <div style={{ fontFamily: "'Orbitron'", fontWeight: 800, fontSize: 13, color: GC[p.rank] || (p.rank <= 10 ? "#a78bfa" : "#334155") }}>{p.rank <= 3 ? MD[p.rank] : p.rank}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: "50%", background: avBg(p.player_id), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff", flexShrink: 0 }}>{(p.display_name || "?")[0]}</div>
+                            <div style={{ overflow: "hidden" }}>
+                              <div style={{ fontWeight: 600, fontSize: 12, color: i < 3 ? GC[i + 1] : "#e2e8f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.display_name}</div>
+                              <div style={{ fontSize: 8, color: "#334155" }}>{p.player_id}</div>
+                            </div>
+                          </div>
+                          <div style={{ position: "relative" }}>
+                            <div style={{ fontFamily: "'Orbitron'", fontWeight: 700, fontSize: 13, color: "#f1f5f9", position: "relative", zIndex: 2 }}>{Number(p.score).toLocaleString()}</div>
+                            <div className="bar-a" style={{ position: "absolute", bottom: -1, left: 0, height: 2, borderRadius: 2, width: `${Math.max((p.score / topScore) * 100, 4)}%`, background: `linear-gradient(90deg,#6d28d9,${GC[p.rank] || "#a78bfa"})`, opacity: .4, transformOrigin: "left", animationDelay: `${i * .025}s` }} />
+                          </div>
+                          <div style={{ fontSize: 12 }}>{FL[p.country] || "🌍"}</div>
+                          <div style={{ fontSize: 10, color: "#64748b" }}>{p.games_played}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Score distribution */}
+                {players.length > 0 && (
+                  <div className="dist">
+                    <div style={{ fontSize: 8, letterSpacing: 2.5, color: "#475569", marginBottom: 8 }}>SCORE DISTRIBUTION</div>
+                    <div className="dist-bars">
+                      {distB.map((cnt, i) => (
+                        <div key={i} className="dist-col">
+                          <div className="dist-bar bar-a" style={{ height: Math.max((cnt / distMx) * 40, 2), opacity: cnt ? .7 : .12, animationDelay: `${i * .035}s` }} />
+                          <div style={{ fontSize: 7, color: "#475569", whiteSpace: "nowrap" }}>{distL[i]}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ═══════ PLAYER SEARCH TAB ═══════ */}
+            {tab === "search" && (
+              <div style={{ maxWidth: 540 }}>
+                {/* Search bar */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                  <input value={searchId} onChange={e => setSearchId(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") searchPlayer(); }}
+                    placeholder="Enter player ID (e.g. blazemaster)"
+                    className="inp" style={{ flex: 1 }} />
+                  <button className="btn" onClick={searchPlayer} disabled={searching}
+                    style={{ padding: "8px 16px", borderRadius: 7, background: searching ? "#1e1b2e" : "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff", fontSize: 11, letterSpacing: 1, whiteSpace: "nowrap" }}>
+                    {searching ? "SEARCHING…" : "🔍 SEARCH"}
+                  </button>
+                </div>
+
+                {/* Quick pick chips from current leaderboard */}
+                {players.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 9, color: "#475569", marginBottom: 5 }}>Quick pick from leaderboard:</div>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {players.slice(0, 10).map(p => (
+                        <button key={p.player_id} className="btn chip"
+                          onClick={() => { setSearchId(p.player_id); setSearchErr(""); setPStats(null); }}>
+                          {p.display_name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Search error */}
+                {searchErr && <div className="alert-err" style={{ marginBottom: 14 }}>{searchErr}</div>}
+
+                {/* Player stats card */}
+                {pStats && pStats.found && (
+                  <div className="card fade-up">
+                    {/* Player header */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid rgba(139,92,246,.07)" }}>
+                      <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg,#7c3aed,#ec4899)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
+                        {(pStats.display_name || "?")[0]}
+                      </div>
+                      <div>
+                        <div style={{ fontFamily: "'Orbitron'", fontWeight: 700, fontSize: 15, color: "#c4b5fd" }}>{pStats.display_name}</div>
+                        <div style={{ fontSize: 10, color: "#475569" }}>{FL[pStats.country] || "🌍"} {pStats.country} • @{pStats.player_id}</div>
+                      </div>
+                    </div>
+
+                    {/* Stats per leaderboard period */}
+                    {Object.entries(pStats.leaderboards || {}).map(([lbId, s]) => {
+                      const pct = parseFloat(s.percentile) || 0;
+                      return (
+                        <div key={lbId} style={{ background: "rgba(139,92,246,.03)", borderRadius: 9, padding: 14, marginBottom: 7, border: "1px solid rgba(139,92,246,.06)" }}>
+                          <div style={{ fontSize: 8, letterSpacing: 2.5, color: "#475569", marginBottom: 8, textTransform: "uppercase" }}>{lbId}</div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+                            <div>
+                              <div style={{ fontSize: 7.5, letterSpacing: 1.5, color: "#475569" }}>RANK</div>
+                              <div style={{ fontFamily: "'Orbitron'", fontWeight: 700, fontSize: 14, color: s.rank <= 3 ? GC[s.rank] : "#c4b5fd", marginTop: 1 }}>#{s.rank}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 7.5, letterSpacing: 1.5, color: "#475569" }}>SCORE</div>
+                              <div style={{ fontFamily: "'Orbitron'", fontWeight: 700, fontSize: 14, color: "#f1f5f9", marginTop: 1 }}>{Number(s.score).toLocaleString()}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 7.5, letterSpacing: 1.5, color: "#475569" }}>PERCENTILE</div>
+                              <div style={{ fontFamily: "'Orbitron'", fontWeight: 700, fontSize: 14, color: pct >= 90 ? "#22c55e" : "#c4b5fd", marginTop: 1 }}>Top {Math.max(100 - pct, 0.1).toFixed(1)}%</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 7.5, letterSpacing: 1.5, color: "#475569" }}>GAMES</div>
+                              <div style={{ fontFamily: "'Orbitron'", fontWeight: 700, fontSize: 14, color: "#f1f5f9", marginTop: 1 }}>{s.games_played}</div>
+                            </div>
+                          </div>
+                          {/* Percentile bar */}
+                          <div style={{ marginTop: 10, height: 4, background: "rgba(139,92,246,.07)", borderRadius: 2, overflow: "hidden" }}>
+                            <div className="bar-a" style={{ height: "100%", width: `${pct}%`, background: pct >= 90 ? "linear-gradient(90deg,#22c55e,#16a34a)" : "linear-gradient(90deg,#7c3aed,#ec4899)", borderRadius: 2, transformOrigin: "left" }} />
+                          </div>
+                          <div style={{ fontSize: 9, color: "#475569", marginTop: 3 }}>Better than {pct}% of {s.total_players} players</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ═══════ SUBMIT TAB ═══════ */}
+            {tab === "submit" && (
+              <div style={{ maxWidth: 440 }}>
+                <div className="card">
+                  <h3 style={{ fontFamily: "'Orbitron'", fontSize: 11, letterSpacing: 2.5, color: "#a78bfa", marginBottom: 16 }}>SUBMIT SCORE</h3>
+                  {[["player_id", "PLAYER ID", "e.g. shadowfox", "text"], ["display_name", "DISPLAY NAME", "e.g. ShadowFox", "text"], ["score", "SCORE", "e.g. 8500", "number"]].map(([k, l, ph, t]) => (
+                    <div key={k} style={{ marginBottom: 10 }}>
+                      <label style={{ fontSize: 8, letterSpacing: 2, color: "#475569", display: "block", marginBottom: 3 }}>{l}</label>
+                      <input value={form[k]} onChange={e => setForm({ ...form, [k]: e.target.value })} placeholder={ph} type={t} className="inp" />
+                    </div>
+                  ))}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 8, letterSpacing: 2, color: "#475569", display: "block", marginBottom: 3 }}>COUNTRY</label>
+                    <select value={form.country} onChange={e => setForm({ ...form, country: e.target.value })} className="inp">
+                      {Object.entries(FL).map(([c, f]) => <option key={c} value={c}>{f} {c}</option>)}
+                    </select>
+                  </div>
+                  <button className="btn" onClick={submitScore} disabled={busy}
+                    style={{ width: "100%", padding: "10px", borderRadius: 7, background: busy ? "#1e1b2e" : "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff", fontSize: 12, letterSpacing: 1.5, fontWeight: 700 }}>
+                    {busy ? "SUBMITTING…" : "🚀 SUBMIT SCORE"}
+                  </button>
+                </div>
+
+                {submitRes && !submitRes.error && (
+                  <div className="alert-ok fade-up">
+                    <div style={{ fontSize: 10, letterSpacing: 1.5, color: "#22c55e", marginBottom: 6, fontWeight: 700 }}>✓ SCORE SUBMITTED</div>
+                    {(submitRes.updates || []).map((u, i) => (
+                      <div key={i} style={{ fontSize: 11, color: "#94a3b8", marginBottom: 2 }}>
+                        <span style={{ color: "#475569" }}>{u.leaderboard}:</span> {u.previous_score} → <span style={{ color: u.improved ? "#22c55e" : "#94a3b8", fontWeight: 700 }}>{u.new_score}</span> {u.improved && "📈"}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {submitRes && submitRes.error && <div className="alert-err fade-up">✗ {submitRes.error}</div>}
+              </div>
+            )}
+
+            {/* FOOTER */}
+            <footer className="footer">
+              <span>SYSTEM DESIGN LAB • DynamoDB GSI • INVERTED SCORE PATTERN • ZERO REDIS</span>
+              <span>PK: player_id • SK: leaderboard_id • GSI SK: inverted_score</span>
+            </footer>
+          </div>
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+
+</html>
